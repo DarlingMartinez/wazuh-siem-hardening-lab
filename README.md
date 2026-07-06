@@ -19,10 +19,14 @@ Para comprobar la efectividad del bastionado y la correcta recolección de event
 #### 1. Intento de Creación de Usuarios no Autorizados
 Se simuló la persistencia de un atacante ejecutando comandos administrativos para inyectar cuentas locales en el sistema operativo. El agente Wazuh capturó el evento en tiempo real, generando alertas críticas de severidad 8 relacionadas con la creación y alteración de cuentas de usuario.
 
-###Consola agregando usuario
+### Consola agregando usuario
+<br>
 <img width="571" height="63" alt="Consola agregando usuario" src="https://github.com/user-attachments/assets/79a26cdd-5d60-4358-8044-c4e3cfaef228" />
-###Logs de Wazuh con alertas nivel 5 / fuera bruta
+<br>
+### Logs de Wazuh con alertas nivel 5 / fuera bruta
+<br>
 <img width="1165" height="605" alt="Logs de Wazuh con alertas nivel 5" src="https://github.com/user-attachments/assets/000ff0a8-7f19-4dc8-80cd-460b2d9b26bc" />
+<br>
 
 
 
