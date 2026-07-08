@@ -19,14 +19,12 @@ Para comprobar el impacto del robustecimiento y la correcta recolección de even
 #### 1. Sondeo del Equipo y Enumeración Local (Discovery)
 * **Ataque Ejecutado:** Se simuló la fase de reconocimiento interno de un atacante mediante la ejecución consecutiva de comandos de descubrimiento en PowerShell para mapear el host: `net user`, `net localgroup administrators`, `ipconfig /all`, `netstat -ano` y `net share`.
 * **Comportamiento en Estado Ciego:** Estos comandos se ejecutaban de manera silenciosa. Al no haber políticas explícitas de auditoría de creación de procesos en la configuración por defecto de Windows 11 Home, el SIEM no recibía alertas de este sondeo interno.
-* **Resultado Post-Hardening:** La activación de la auditoría local permitió registrar la ejecución de binarios de descubrimiento, eliminando la invisibilidad de las acciones en la consola.
 
 * <img width="689" height="237" alt="imagen 11" src="https://github.com/user-attachments/assets/13b5404b-930c-422a-a81f-222fc49f48fc" />
 
 #### 2. Escaneo de Red Local (Reconnaissance)
 * **Ataque Ejecutado:** Se lanzó un reconocimiento de red dirigido hacia la infraestructura local utilizando la herramienta `Nmap` mediante el comando `nmap -F 127.0.0.1` para identificar puertos abiertos y servicios activos (detectando servicios como `msrpc`, `https` y `microsoft-ds`).
 * **Comportamiento en Estado Ciego:** El tráfico anómalo entrante y los sondeos de puertos no generaban telemetría en los canales nativos de Windows, manteniendo al SIEM sin capacidad de reacción ante un escaneo de red.
-* **Resultado Post-Hardening:** El agente comenzó a auditar los cambios de estado en las conexiones del host y el comportamiento de red, permitiendo correlacionar actividades de infraestructura de fondo tras el robustecimiento de las directivas.
 
 * <img width="1103" height="447" alt="imagen 13" src="https://github.com/user-attachments/assets/7e923d9a-8248-4c65-b769-2dfe5428b5de" />
 
@@ -164,4 +162,7 @@ New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization" -Forc
 New-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization" -Name "NoLockScreenCamera" -Value 1 -PropertyType DWORD -Force | Out-Null
 
 Write-Host "[✔️] Proceso de Hardening Finalizado Exitosamente." -ForegroundColor Green
+```
+---
+
 
