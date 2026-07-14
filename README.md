@@ -38,7 +38,7 @@ Para comprobar el impacto del robustecimiento y la correcta recolección de even
 
 #### 4. Ataque de Fuerza Bruta Masivo (Credential Access)
 * **Ataque Ejecutado:** Se simularon intentos masivos y consecutivos de inicio de sesión con credenciales erróneas sobre el host para evaluar la respuesta ante un vector de compromiso por adivinación de contraseñas.
-* **Comportamiento y Mitigación Operativa (`Logs de Wazuh con alertas nivel 5.png`):** A diferencia de otros vectores, el agente y las directivas de seguridad locales ya contaban con la capacidad nativa de identificar e interceptar esta actividad antes del proceso de hardening. El sistema operativo bloqueó automáticamente la cuenta tras **8 intentos fallidos**, deteniendo el progreso del ataque de forma efectiva.
+* **Comportamiento y Mitigación Operativa:** A diferencia de otros vectores, el agente y las directivas de seguridad locales ya contaban con la capacidad nativa de identificar e interceptar esta actividad antes del proceso de hardening. El sistema operativo bloqueó automáticamente la cuenta tras **8 intentos fallidos**, deteniendo el progreso del ataque de forma efectiva.
 * **Respuesta Registrada en el SIEM:** Wazuh auditó el ciclo completo del evento en tiempo real, reflejando la efectividad de los mecanismos de protección perimetral del host:
   * **Rule ID 60122:** *Logon failure - Unknown user or bad password* (**Severidad Nivel 5**) registrando de forma individual cada ráfaga de acceso denegado.
   * **Rule ID 60204:** *Multiple Windows logon failures* (**Severidad Nivel 10**), detectando la anomalía por correlación de eventos masivos.
