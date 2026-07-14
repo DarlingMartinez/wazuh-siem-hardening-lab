@@ -163,6 +163,63 @@ New-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalizatio
 
 Write-Host "[✔️] Proceso de Hardening Finalizado Exitosamente." -ForegroundColor Green
 ```
+
+---
+## 📊 Fase 3: Validación del Hardening y Simulación de Ataques (Post-Hardening)
+
+El objetivo fundamental de esta fase es demostrar el éxito real del proceso de robustecimiento selectivo, contrastando simulaciones de ataque controladas contra la nueva visibilidad forense obtenida en el SIEM. Tras la aplicación de las directivas avanzadas de auditoría, el ecosistema ha dejado de operar en un "Estado Ciego", permitiendo la ingesta, parsing y análisis detallado de payloads JSON estructurados en tiempo real.
+
 ---
 
+### 🛠️ Escenario 1: Sondeo del Equipo y Enumeración Local (Táctica MITRE: Discovery)
+
+* **Contexto:** El adversario ejecuta comandos e interactúa con el host para mapear configuraciones de red, usuarios activos y el árbol de procesos, intentando descubrir vectores de escalación o recursos compartidos mediante binarios locales del sistema.
+
+#### Evidencia en Consola vs SIEM
+<img width="1248" height="473" alt="Sondeo del Equipo y Enumeración Local" src="https://github.com/user-attachments/assets/9ed03f72-54f0-49ab-a415-68a46156603c" />
+
+#### Análisis e Indicadores Técnicos de Éxito
+* **Identificación Absoluta del Evento:** El subsistema de seguridad del host registra y reenvía con éxito el **EventID 4688** (*A new process has been created*), confirmando que las directivas del registro configuradas forzan la auditoría del ciclo de vida completo de cada binario invocado.
+* **Trazabilidad Forense de Infraestructura:** El payload JSON procesado por Wazuh expone de forma transparente la jerarquía de ejecución del proceso. El campo clave `data.win.eventdata.parentProcessName` identifica de manera inequívoca que el binario de origen proviene de la infraestructura de contenedores (`...\docker.exe`), rastreando su interacción directa con las capas del host.
+* **Erradicación de la Ceguera de Consola:** A través de la habilitación del parámetro explícito en el registro, el SIEM decodifica y almacena de forma íntegra la cadena exacta de comandos en el campo `data.win.eventdata.newProcessName` (ej. `...\conhost.exe`) y estructuras internas asociadas. Esto elimina cualquier intento de ocultamiento táctico por parte de scripts automáticos.
+
+---
+
+### 🔑 Escenario 2: Simulación de Persistencia mediante Manipulación de Cuentas (Táctica MITRE: Persistence)
+
+* **Contexto:** Se simula la actividad de un intruso comprometiendo el endpoint y buscando garantizar el acceso a largo plazo mediante la inyección de cuentas locales no autorizadas, o intentando borrar huellas forenses a través de la remoción de identidades previas.
+
+#### A. Detección de Eliminación de Cuentas (EventID: 4726)
+<img width="1049" height="482" alt="Log elimincación de cuenta" src="https://github.com/user-attachments/assets/45d195f8-8c36-4476-b942-b84a03e6c33d" />
+
+* **Análisis del Payload JSON:** Al ejecutarse el comando de remoción administrativa `net user InvitadoSCA /delete`, la subcategoría de administración de cuentas de Windows genera inmediatamente un log bajo el **EventID 4726** (*A user account was deleted*). El agente de Wazuh captura e indexa el JSON crudo extrayendo los campos forenses críticos:
+  * `data.win.eventdata.targetUserName`: `'InvitadoSCA'` (Identidad revocada).
+  * `data.win.eventdata.subjectUserName`: `'User'` (Contexto de seguridad o actor que gatilló la acción).
+  * `data.win.system.eventID`: `'4726'` (ID de correlación para el SOC).
+
+#### B. Detección de Inyección de Cuentas Nuevas (EventID: 4720)
+<img width="1038" height="473" alt="Log creación de cuenta" src="https://github.com/user-attachments/assets/01ff171f-35bd-47a6-bc5b-22ec2043801e" />
+
+* **Análisis del Payload JSON:** El intento de persistencia maliciosa mediante el aprovisionamiento de una cuenta local vía `net user InvitadoSCA Temporal123* /add` es interceptado y catalogado bajo el **EventID 4720** (*A user account was created*). El SIEM parsea con éxito la estructura de datos:
+  * `data.win.eventdata.targetUserName`: Explícitamente mapeado como `'InvitadoSCA'`.
+  * `data.win.eventdata.subjectDomainName`: Registrado bajo el dominio local del Host (`'DESKTOP-2EL1GG2'`).
+  * **Valor para el Analista de SOC:** Esta telemetría granular enriquece los dashboards de Wazuh de forma instantánea, elevando automáticamente la severidad del evento a **Nivel 8**, lo que mitiga el riesgo de que la creación de cuentas administrativas pase desapercibida en auditorías.
+
+---
+
+### 🔐 Escenario 3: Mitigación de Ataques de Fuerza Bruta y Control de Umbrales (Táctica MITRE: Credential Access)
+
+* **Contexto:** Con el fin de validar el comportamiento dinámico del Bloque 2 del script de bastinado, se programó un bucle iterativo automatizado en PowerShell (`1..6 | ForEach-Object { net use ... }`) para simular un ataque de diccionario de alta velocidad contra el host empleando autenticación local de red.
+
+#### Evidencia en Consola vs SIEM
+<img width="1067" height="460" alt="Captura de pantalla 2026-07-13 185424" src="https://github.com/user-attachments/assets/6bb4ce27-4d0a-42c7-88eb-2ce798fad654" />
+
+#### Análisis e Indicadores Técnicos de Éxito
+* **Control de Mitigación en el Kernel:** Al lanzarse la ráfaga automatizada de credenciales espurias, la consola de PowerShell refleja de inmediato el rechazo del sistema operativo con el código de terminación nativo: `Error de sistema 1326. El nombre de usuario o la contraseña no son correctos.` Al superar la cuota del umbral estricto definido en las políticas de hardening (`lockoutthreshold:5`), los mecanismos perimetrales del host restringen la superficie de ataque bloqueando la cuenta de manera temporal.
+* **Extracción y Desglose Forense en Wazuh:** El módulo *Discover* de Wazuh intercepta de forma masiva los eventos bajo el **EventID 4625** (*An account failed to log on*). Al inspeccionar detalladamente el payload JSON capturado en tiempo real, se extrae la telemetría exacta del ataque:
+  * `data.win.eventdata.targetUserName`: `'InvitadoSCA'` (Cuenta específica bajo ataque de diccionario).
+  * `data.win.eventdata.authenticationPackageName`: `'NTLM'` (Protocolo de autenticación vulnerado).
+  * `data.win.eventdata.logonType`: `'3'` (Código que clasifica el intento de acceso a través de la **Red**, confirmando el vector de intrusión externo/lateral).
+  * `data.win.eventdata.subStatus`: `'0xc000006a'` (Mapeo exacto en el espacio de memoria de Windows que diagnostica: *User logon with misspelled or bad password*).
+* **Valor de Detección Correlacionada:** Al contar con estos campos estructurados de forma atómica en lugar de texto plano sin parsear, el motor de correlación de Wazuh calcula el volumen de eventos de la misma IP de origen (`127.0.0.1`) en un delta de tiempo inferior a segundos, lo que permite disparar de manera proactiva alertas compuestas de severidad alta por ataque de Fuerza Bruta en proceso.
 
