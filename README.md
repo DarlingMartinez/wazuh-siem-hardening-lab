@@ -165,7 +165,7 @@ Write-Host "[✔️] Proceso de Hardening Finalizado Exitosamente." -ForegroundC
 ```
 
 ---
-## 📊 Fase 3: Validación del Hardening y Simulación de Ataques (Post-Hardening)
+## 📊 Sección 3: Validación del Hardening y Simulación de Ataques (Post-Hardening)
 
 El objetivo fundamental de esta fase es demostrar el éxito real del proceso de robustecimiento selectivo, contrastando simulaciones de ataque controladas contra la nueva visibilidad forense obtenida en el SIEM. Tras la aplicación de las directivas avanzadas de auditoría, el ecosistema ha dejado de operar en un "Estado Ciego", permitiendo la ingesta, parsing y análisis detallado de payloads JSON estructurados en tiempo real.
 
@@ -176,7 +176,8 @@ El objetivo fundamental de esta fase es demostrar el éxito real del proceso de 
 * **Contexto:** El adversario ejecuta comandos e interactúa con el host para mapear configuraciones de red, usuarios activos y el árbol de procesos, intentando descubrir vectores de escalación o recursos compartidos mediante binarios locales del sistema.
 
 #### Evidencia en Consola vs SIEM
-<img width="1248" height="473" alt="Sondeo del Equipo y Enumeración Local" src="https://github.com/user-attachments/assets/9ed03f72-54f0-49ab-a415-68a46156603c" />
+
+* <img width="1248" height="473" alt="Sondeo del Equipo y Enumeración Local" src="https://github.com/user-attachments/assets/9ed03f72-54f0-49ab-a415-68a46156603c" />
 
 #### Análisis e Indicadores Técnicos de Éxito
 * **Identificación Absoluta del Evento:** El subsistema de seguridad del host registra y reenvía con éxito el **EventID 4688** (*A new process has been created*), confirmando que las directivas del registro configuradas forzan la auditoría del ciclo de vida completo de cada binario invocado.
@@ -190,7 +191,8 @@ El objetivo fundamental de esta fase es demostrar el éxito real del proceso de 
 * **Contexto:** Se simula la actividad de un intruso comprometiendo el endpoint y buscando garantizar el acceso a largo plazo mediante la inyección de cuentas locales no autorizadas, o intentando borrar huellas forenses a través de la remoción de identidades previas.
 
 #### A. Detección de Eliminación de Cuentas (EventID: 4726)
-<img width="1049" height="482" alt="Log elimincación de cuenta" src="https://github.com/user-attachments/assets/45d195f8-8c36-4476-b942-b84a03e6c33d" />
+
+* <img width="1049" height="482" alt="Log elimincación de cuenta" src="https://github.com/user-attachments/assets/45d195f8-8c36-4476-b942-b84a03e6c33d" />
 
 * **Análisis del Payload JSON:** Al ejecutarse el comando de remoción administrativa `net user InvitadoSCA /delete`, la subcategoría de administración de cuentas de Windows genera inmediatamente un log bajo el **EventID 4726** (*A user account was deleted*). El agente de Wazuh captura e indexa el JSON crudo extrayendo los campos forenses críticos:
   * `data.win.eventdata.targetUserName`: `'InvitadoSCA'` (Identidad revocada).
@@ -198,7 +200,8 @@ El objetivo fundamental de esta fase es demostrar el éxito real del proceso de 
   * `data.win.system.eventID`: `'4726'` (ID de correlación para el SOC).
 
 #### B. Detección de Inyección de Cuentas Nuevas (EventID: 4720)
-<img width="1038" height="473" alt="Log creación de cuenta" src="https://github.com/user-attachments/assets/01ff171f-35bd-47a6-bc5b-22ec2043801e" />
+
+* <img width="1038" height="473" alt="Log creación de cuenta" src="https://github.com/user-attachments/assets/01ff171f-35bd-47a6-bc5b-22ec2043801e" />
 
 * **Análisis del Payload JSON:** El intento de persistencia maliciosa mediante el aprovisionamiento de una cuenta local vía `net user InvitadoSCA Temporal123* /add` es interceptado y catalogado bajo el **EventID 4720** (*A user account was created*). El SIEM parsea con éxito la estructura de datos:
   * `data.win.eventdata.targetUserName`: Explícitamente mapeado como `'InvitadoSCA'`.
@@ -212,7 +215,8 @@ El objetivo fundamental de esta fase es demostrar el éxito real del proceso de 
 * **Contexto:** Con el fin de validar el comportamiento dinámico del Bloque 2 del script de bastinado, se programó un bucle iterativo automatizado en PowerShell (`1..6 | ForEach-Object { net use ... }`) para simular un ataque de diccionario de alta velocidad contra el host empleando autenticación local de red.
 
 #### Evidencia en Consola vs SIEM
-<img width="1067" height="460" alt="Captura de pantalla 2026-07-13 185424" src="https://github.com/user-attachments/assets/6bb4ce27-4d0a-42c7-88eb-2ce798fad654" />
+
+* <img width="1067" height="460" alt="Captura de pantalla 2026-07-13 185424" src="https://github.com/user-attachments/assets/6bb4ce27-4d0a-42c7-88eb-2ce798fad654" />
 
 #### Análisis e Indicadores Técnicos de Éxito
 * **Control de Mitigación en el Kernel:** Al lanzarse la ráfaga automatizada de credenciales espurias, la consola de PowerShell refleja de inmediato el rechazo del sistema operativo con el código de terminación nativo: `Error de sistema 1326. El nombre de usuario o la contraseña no son correctos.` Al superar la cuota del umbral estricto definido en las políticas de hardening (`lockoutthreshold:5`), los mecanismos perimetrales del host restringen la superficie de ataque bloqueando la cuenta de manera temporal.
@@ -223,3 +227,89 @@ El objetivo fundamental de esta fase es demostrar el éxito real del proceso de 
   * `data.win.eventdata.subStatus`: `'0xc000006a'` (Mapeo exacto en el espacio de memoria de Windows que diagnostica: *User logon with misspelled or bad password*).
 * **Valor de Detección Correlacionada:** Al contar con estos campos estructurados de forma atómica en lugar de texto plano sin parsear, el motor de correlación de Wazuh calcula el volumen de eventos de la misma IP de origen (`127.0.0.1`) en un delta de tiempo inferior a segundos, lo que permite disparar de manera proactiva alertas compuestas de severidad alta por ataque de Fuerza Bruta en proceso.
 
+---
+## 🛠️ Sección 4: Gestión de Incidentes, Troubleshooting y Resultado Final
+
+La resiliencia de una infraestructura de monitoreo se mide por la capacidad de diagnosticar, aislar y resolver fallos críticos en caliente. Esta sección documenta el proceso de análisis y solución de un incidente real de interrupción de servicios en el entorno local de virtualización.
+
+---
+
+### 📉 4.1 Diagnóstico de la Falla Crítica en el Orquestador Docker y Backend WSL2
+
+Durante la fase operativa del laboratorio, el motor de **Docker Desktop** experimentó un colapso estructural, interrumpiendo el ciclo de vida de los contenedores que alojan los microservicios del SIEM (Wazuh Indexer, Wazuh Manager y Wazuh Dashboard).
+
+* <img width="1118" height="674" alt="imagen 19" src="https://github.com/user-attachments/assets/9b95897c-3c0d-4bdf-9440-de6fb912ee32" />
+
+#### Análisis de Causa Raíz (RCA)
+
+Como se evidencia en la consola de depuración del motor, la excepción principal arrojó un error de tiempo de espera:
+
+```cmd
+DockerDesktop/Wsl/CommandTimedOut: c:\windows\system32\wsl.exe -l -v --all: exit status 1
+```
+
+Este síntoma indica un agotamiento de los canales de comunicación de red (sockets TCP/IP virtuales) y un bloqueo en las llamadas de la API de Winsock (Windows Sockets) en el sistema operativo Windows. El subsistema WSL2 (que ejecuta el Kernel de Linux en Windows) sufrió un bloqueo en su interfaz de red virtual, impidiendo que Docker consultara su estado y deteniendo el flujo de datos hacia el contenedor del Wazuh Manager.
+
+---
+
+### 🔌 4.2 Degradación del Dashboard y Desconexión de la API de Wazuh
+
+La caída de la capa de virtualización generó un fallo en cadena que afectó la disponibilidad de la interfaz web y la base de datos de alertas.
+
+**Estado 1: Desconexión de la API de Seguridad**
+
+* <img width="656" height="589" alt="Imagen 1" src="https://github.com/user-attachments/assets/c5f85702-d8c0-4f44-b7e0-1130086b1aba" />
+
+El colapso de la red virtual impidió la comunicación con la API de Wazuh. Como se aprecia en la captura superior, la interfaz web presentó el error `[API connection] No API available to connect`, impidiendo al administrador del sistema visualizar el estado de los agentes o interactuar con la consola de alertas en tiempo real.
+
+**Estado 2: Conflicto en los Patrones de Índices (Index Patterns)**
+
+* <img width="617" height="349" alt="imagen 2" src="https://github.com/user-attachments/assets/e36827d2-259e-4e41-8a64-fb57e75574b5" />
+
+Al reiniciarse los servicios tras el bloqueo de red, el motor de indexación (encargado de organizar las alertas) detectó inconsistencias en el almacenamiento. Como se muestra en la captura, se presentaron excepciones de tipo `version_conflict_engine_exception` en los índices críticos `wazuh-monitoring-*` y `wazuh-statistics-*`.
+
+Este conflicto de versión ocurre cuando el sistema intenta escribir datos duplicados creados durante la desconexión, sin que la base de datos haya sincronizado correctamente su estado anterior.
+
+---
+
+### 🛠️ 4.3 Plan de Mitigación y Recuperación Operativa
+
+Para restaurar la operatividad del SIEM sin perder el histórico de eventos ni las configuraciones, el administrador aplicó el siguiente procedimiento técnico:
+
+**Paso 1: Purga del Catálogo de Red en Windows**
+
+Se ejecutó un comando de bajo nivel en la consola de Windows (PowerShell) para limpiar los sockets de comunicación bloqueados:
+
+```powershell
+netsh winsock reset
+```
+
+Esto reajustó la pila de red de Windows, permitiendo que WSL2 y Docker volvieran a comunicarse internamente a través de sus interfaces virtuales sin bloqueos.
+
+**Paso 2: Re-sincronización de Índices en el Dashboard**
+
+Se eliminaron las referencias de búsqueda con conflictos de versión desde la configuración del Dashboard y se forzó la inicialización limpia de los esquemas, recuperando el acceso a los datos de alertas de forma segura.
+
+**Paso 3: Registro y Re-enrolamiento Seguro del Agente**
+
+Para asegurar una comunicación limpia y evitar conflictos con registros antiguos del proyecto (como "Uniko"), se regeneró la identidad criptográfica del host. El archivo de claves del agente se actualizó bajo un identificador exclusivo en el sistema:
+
+```powershell
+# Ubicación del archivo de claves de autenticación en el Host
+C:\Program Files (x86)\ossec-agent\client.keys
+```
+
+Esto consolidó al host de forma definitiva como el agente ID 006 con el nombre corporativo Uniko-local, garantizando un canal de comunicación cifrado.
+
+---
+
+### 🏆 4.4 Resultado Final del Ecosistema
+
+Tras la resolución del incidente y la aplicación de las directivas de seguridad, la infraestructura se encuentra en un estado óptimo de resiliencia y visibilidad:
+
+| Componente | Estado Operativo | Detalle Técnico | Beneficio Obtenido |
+|---|---|---|---|
+| Wazuh Manager (Docker) | Active / Healthy | Contenedores sincronizados y API activa. | Centralización y análisis de alertas en tiempo real. |
+| Wazuh Agent (Host) | Active | Registrado bajo el ID 006 (Uniko-local). | Reenvío seguro de eventos locales al servidor. |
+| Logs de Seguridad (Windows) | Hardened | Tamaño de canal expandido a 192 MB. | Retención extendida de evidencia; evita pérdida de logs. |
+| Auditoría de Procesos | Enabled | Registro activo de comandos ejecutados (Event ID 4688). | Visibilidad total sobre qué herramientas se ejecutan en el host. |
